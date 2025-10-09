@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Machine Test UI</title>
+    <style>
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: linear-gradient(135deg, #e3f2fd, #fff);
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #1565c0;
+            text-align: center;
+        }
+        section {
+            background: #fff;
+            padding: 20px;
+            margin: 20px auto;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-width: 600px;
+            display: grid; gap: 8px;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px 0;
+            width: 100%;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        button {
+            background: #1565c0;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0d47a1;
+        }
+        pre {
+            background: #f4f6f8;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Python Machine Test</h1>
+
+<section>
+    <h3>Register User</h3>
+    <input type="text" id="first_name" placeholder="First Name">
+    <input type="text" id="last_name" placeholder="Last Name">
+    <input type="text" id="username" placeholder="Username (min 5 chars)">
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password (min 8 chars, include number)">
+    <button onclick="registerUser()">Register</button>
+    <pre id="registerResult"></pre>
+</section>
+
+
+<section>
+    <h3>Get All Users</h3>
+    <button onclick="getUsers()">Load Users</button>
+    <pre id="usersResult"></pre>
+</section>
+
+<section>
+    <h3>Delete User by ID</h3>
+    <input type="number" id="deleteId" placeholder="Enter User ID">
+    <button onclick="deleteUser()">Delete</button>
+    <pre id="deleteResult"></pre>
+</section>
+<hr>
+<h2> Expense Tracker</h2>
+
+<!-- Add Category -->
+<section>
+    <h3>Add Category</h3>
+    <input type="text" id="category_name" placeholder="Category Name (e.g. Food)">
+    <button onclick="addCategory()">Add Category</button>
+    <pre id="categoryResult"></pre>
+</section>
+
+<!-- Add Expense -->
+<section>
+    <h3>Add Expense</h3>
+    <input type="text" id="expense_username" placeholder="Username (optional if single user)">
+    <input type="text" id="expense_title" placeholder="Expense Title (e.g. Lunch)">
+    <input type="number" id="expense_amount" placeholder="Amount">
+    <input type="number" id="expense_category_id" placeholder="Category ID (from Add Category)">
+    <input type="date" id="expense_date">
+    <button onclick="addExpense()">Add Expense</button>
+    <pre id="expenseResult"></pre>
+</section>
+
+
+<!-- Expense Summary -->
+<section>
+    <h3>View Expense Summary</h3>
+    <button onclick="getExpenseSummary()">Get Summary</button>
+    <pre id="expenseSummary"></pre>
+</section>
+
+
+
+<script>
+const baseURL = '/api';
+
+async function registerUser() {
+    const first_name = document.getElementById('first_name').value;
+    const last_name = document.getElementById('last_name').value;
+    const username = document.getElementById('username').value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+
+    const response = await fetch(`${baseURL}/register/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ first_name, last_name, username, email, password })
+    });
+
+    const data = await response.json();
+    document.getElementById('registerResult').textContent = JSON.stringify(data, null, 2);
+}
+
+
+async function getUsers() {
+    const response = await fetch(`${baseURL}/users/`);
+    const data = await response.json();
+    document.getElementById('usersResult').textContent = JSON.stringify(data, null, 2);
+}
+
+async function deleteUser() {
+    const id = document.getElementById('deleteId').value;
+    const response = await fetch(`${baseURL}/users/${id}/delete/`, { method: 'DELETE' });
+    const data = await response.json().catch(() => ({ message: 'Deleted successfully (no response)' }));
+    document.getElementById('deleteResult').textContent = JSON.stringify(data, null, 2);
+}
+// ---------- CATEGORY ----------
+async function addCategory() {
+    const name = document.getElementById('category_name').value.trim();
+    const response = await fetch(`${baseURL}/categories/add/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+    });
+    const data = await response.json();
+    document.getElementById('categoryResult').textContent = JSON.stringify(data, null, 2);
+    // if created show id in a friendly alert
+    if (response.ok && data.category) {
+        alert(`Category saved: id=${data.category.id} name=${data.category.name}`);
+    }
+}
+
+// ---------- EXPENSE ----------
+async function addExpense() {
+    const username = document.getElementById('expense_username').value.trim(); // optional
+    const title = document.getElementById('expense_title').value.trim();
+    const amount = document.getElementById('expense_amount').value;
+    const category_id = document.getElementById('expense_category_id').value;
+    const date = document.getElementById('expense_date').value;
+
+    const payload = { title, amount, category_id, date };
+    if (username) payload.username = username;
+
+    const response = await fetch(`${baseURL}/expenses/add/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    const data = await response.json();
+    document.getElementById('expenseResult').textContent = JSON.stringify(data, null, 2);
+    if (response.ok) {
+        alert('Expense added ✅');
+    } else {
+        alert('Error: ' + (data.error || JSON.stringify(data)));
+    }
+}
+
+// ---------- EXPENSE SUMMARY ----------
+async function getExpenseSummary() {
+    const response = await fetch(`${baseURL}/expenses/summary/`);
+    const data = await response.json();
+    document.getElementById('expenseSummary').textContent = JSON.stringify(data, null, 2);
+}
+
+</script>
+
+</body>
+</html>
